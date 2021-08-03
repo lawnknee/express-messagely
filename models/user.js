@@ -38,8 +38,7 @@ class User {
       `
       SELECT password
           FROM users
-          WHERE username = $1
-          RETURNING password`,
+          WHERE username = $1`,
       [username]
     );
     const user = result.rows[0];
@@ -65,13 +64,15 @@ class User {
   }
 
   /** All: basic info on all users:
-   * [{username, first_name, last_name}, ...] */
+   * [{username, first_name, last_name, phone}, ...] */
 
   static async all() {
     const results = await db.query(`
-      SELECT username, first_name, last_name
-          FROM users`);
+      SELECT username, first_name, last_name, phone
+          FROM users
+          ORDER BY username`);
     return results.rows;
+    // db will return out of order unless specified
   }
 
   /** Get: get user by username
@@ -105,132 +106,77 @@ class User {
 
   /** Return messages from this user.
    *
-   * [{id, to_username, body, sent_at, read_at}]
+   * [{id, to_user, body, sent_at, read_at}]
    *
-   * where to_username is
+   * where to_user is
    *   {username, first_name, last_name, phone}
    */
   static async messagesFrom(username) {
-    // const mResults = await db.query(
-    //   `
-    //   SELECT id, to_username, body, sent_at, read_at
-    //       FROM messages
-    //           JOIN users
-    //               ON messages.to_username = users.username
-    //       WHERE username = $1`,
-    //   [username]
-    // );
-
-    // const { to_username, ...messages } = mResults.rows;
-
-    // const uResults = await db.query(
-    //   `
-    //   SELECT username, first_name, last_name, phone
-    //       FROM users
-    //       WHERE username = $1`,
-    //   [to_username]
-    // );
-
-    // const user = uResults.rows[0];
-
-    // messages.to_user = user;
-
-    // return messages;
-
     const results = await db.query(
-    `
-    SELECT m.id,
-           m.to_username,
-           to.first_name,
-           to.last_name,
-           to.phone,
-           m.body,
-           m.sent_at,
-           m.read_at
-        FROM messages as m
-            JOIN users as to
-                ON messages.to_username = users.username
-        WHERE from_username = $1`,
-        [username]
-    );
+      `SELECT m.id,
+              m.to_username,
+              users.first_name,
+              users.last_name,
+              users.phone,
+              m.body,
+              m.sent_at,
+              m.read_at
+          FROM messages AS m
+              JOIN users
+                  ON m.to_username = users.username
+          WHERE from_username = $1`,
+          [username]);
     
-    return results.rows.map( function(message) {
-      return {
+    // arrow function m will return this thing which happens to be an object
+    return results.rows.map((m) => (
+      {
         id: m.id,
-        to_username: {
+        to_user: {
           username: m.to_username,
-          first_name: to.first_name,
-          last_name: to.last_name,
-          phone: to.phone,
+          first_name: m.first_name,
+          last_name: m.last_name,
+          phone: m.phone,
         },
         body: m.body,
         sent_at: m.sent_at,
         read_at: m.read_at,
-      }
-    });
-
-    }
+      }));
+  }
 
   /** Return messages to this user.
    *
-   * [{id, from_username, body, sent_at, read_at}]
+   * [{id, from_user, body, sent_at, read_at}]
    *
-   * where from_username is
+   * where from_user is
    *   {username, first_name, last_name, phone}
    */
 
   static async messagesTo(username) {
-    // const mResults = await db.query(
-    //   `
-    //   SELECT id, from_username, body, sent_at, read_at
-    //       FROM messages
-    //           JOIN users
-    //               ON messages.from_username = users.username
-    //       WHERE username = $1`,
-    //   [username]
-    // );
-
-    // const { from_username, ...messages } = mResults.rows;
-
-    // const uResults = await db.query(
-    //   `
-    //   SELECT username, first_name, last_name, phone
-    //       FROM users
-    //       WHERE username = $1`,
-    //   [from_username]
-    // );
-
-    // const user = uResults.rows[0];
-
-    // messages.from_user = user;
-
-    // return messages;
-
     const results = await db.query(
       `
       SELECT m.id,
              m.from_username,
-             from.first_name,
-             from.last_name,
-             from.phone,
+             users.first_name,
+             users.last_name,
+             users.phone,
              m.body,
              m.sent_at,
              m.read_at
           FROM messages as m
-              JOIN users as from
-                  ON messages.from_username = users.username
-          WHERE from_username = $1`,
+              JOIN users
+                  ON m.from_username = users.username
+          WHERE to_username = $1`,
           [username]
       );
       
-    return results.rows.map( function(message) {
+    return results.rows.map( function(m) {
       return {
         id: m.id,
-        from_username: {
+        from_user: {
           username: m.from_username,
-          first_name: from.first_name,
-          last_name: from.last_name,
-          phone: from.phone,
+          first_name: m.first_name,
+          last_name: m.last_name,
+          phone: m.phone,
         },
         body: m.body,
         sent_at: m.sent_at,
