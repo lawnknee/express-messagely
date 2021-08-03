@@ -95,7 +95,7 @@ class User {
              last_login_at
           FROM users
           WHERE username = $1`,
-      [username]
+          [username]
     );
     const user = result.rows[0];
 
