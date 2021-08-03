@@ -32,16 +32,19 @@ describe("Users Routes Test", function () {
       phone: "+14155551111",
     });
 
-    const u1Login = await request(app)
-        .post("/auth/login")
-        .send({ username: "test1", password: "password" });
+    // const u1Login = await request(app)
+    //     .post("/auth/login")
+    //     .send({ username: "test1", password: "password" });
 
-    const u2Login = await request(app)
-        .post("/auth/login")
-        .send({ username: "test2", password: "password" });
+    // const u2Login = await request(app)
+    //     .post("/auth/login")
+    //     .send({ username: "test2", password: "password" });
 
-    u1Token = u1Login.body.token;
-    u2Token = u2Login.body.token;
+    // u1Token = u1Login.body.token;
+    // u2Token = u2Login.body.token;
+
+    u1Token = jwt.sign({ username: "test1"}, SECRET_KEY);
+    u2Token = jwt.sign({ username: "test2"}, SECRET_KEY);
   });
 
   /** GET /users/ => 
@@ -70,6 +73,7 @@ describe("Users Routes Test", function () {
       const response = await request(app)
         .get("/users")
         .send({ _token: "invalid" }); // invalid token!
+
       expect(response.statusCode).toEqual(401);
       });
   });
@@ -93,9 +97,15 @@ describe("Users Routes Test", function () {
       }});
       expect(response.statusCode).toEqual(200);
     })
+
+    // test invalid username input
   })
 
-  /** GET /:username/to => { messages: [{} ...]} */
+  // new describe block for user mesages
+    // before each will create messages 
+
+  /** GET /:username/to => 
+   *    { messages: [{id, body, sent_at, read_at, from_user: {}} ...]} */
 
   describe("GET /:username/to", function () {
     test("get messages sent to user", async function () {
@@ -104,36 +114,60 @@ describe("Users Routes Test", function () {
         .send({ _token: u1Token, 
                 to_username: u2.username, 
                 body: "test message"});
-      console.log(sendMessage.body)
+      // lean towards in before each (new describe block)
+          // m1 = await Message.create( arguements )
+          // create a few test messages to use
 
       const response = await request(app)
         .get(`/users/${u2.username}/to`)
         .send({_token: u2Token});
       
-      // console.log(response.body)
+      delete u1.password;
+      
       expect(response.statusCode).toEqual(200);
-      expect(response.body).toEqual({messages: []})
+      expect(response.body).toEqual({messages: [{
+        id: expect.any(Number),
+        body: "test message",
+        sent_at: expect.any(String),
+        read_at: null,
+        from_user: u1
+      }]})
     });
+
+    // add pessimistic test for invalid username
+    // add pessimistic test for not logged in user
+
   });
 
   /** GET /:username/from => { messages: [{} ...]} */
 
-//   describe("GET /:username/from", function () {
-//     test("get messages sent from user", async function () {
-//       const sendMessage = await request(app)
-//         .post("/messages/")
-//         .send({ _token: u1Token, 
-//                 to_username: u2.username, 
-//                 body: "test message"});
+  describe("GET /:username/from", function () {
+    test("get messages sent from user", async function () {
+      const sendMessage = await request(app)
+        .post("/messages/")
+        .send({ _token: u1Token, 
+                to_username: u2.username, 
+                body: "test message"});
 
-//       const response = await request(app)
-//         .get(`/users/${u1.username}/to`)
-//         .send({_token: u1Token});
+      const response = await request(app)
+        .get(`/users/${u1.username}/from`)
+        .send({_token: u1Token});
       
-//       expect(response.statusCode).toEqual(200);
-//       expect(response.body).toEqual({messages: []})
-//     });
-//   });
+      delete u2.password;
+
+      expect(response.statusCode).toEqual(200);
+      expect(response.body).toEqual({messages: [{
+        id: expect.any(Number),
+        body: "test message",
+        sent_at: expect.any(String),
+        read_at: null,
+        to_user: u2
+      }]})
+    });
+  });
+
+  // add pessimistic test for invalid username
+  // add pessimistic test for not logged in user
 });
 
 afterAll(async function () {

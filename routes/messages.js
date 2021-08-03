@@ -2,6 +2,8 @@
 
 const Router = require("express").Router;
 const router = new Router();
+const Message = require("../models/message")
+const { UnauthorizedError } = require("../expressError")
 
 const { ensureCorrectUser, ensureLoggedIn } = require("../middleware/auth")
 
@@ -17,9 +19,16 @@ const { ensureCorrectUser, ensureLoggedIn } = require("../middleware/auth")
  * Makes sure that the currently-logged-in users is either the to or from user.
  *
  **/
-router.get("/:id", ensureCorrectUser, async function(req, res, next) {
+router.get("/:id", ensureLoggedIn, async function(req, res, next) {
+  const { username } = res.locals.user;
+
   const message = await Message.get(req.params.id);
-  return res.json({ message });
+
+  if (username === message.to_user.username || username === message.from_user.username) {
+    return res.json({ message });
+  } else {
+    throw new UnauthorizedError();
+  }
 })
 
 /** POST / - post message.
@@ -32,7 +41,7 @@ router.post("/", ensureLoggedIn, async function(req, res, next) {
   const { to_username, body } = req.body;
   const { username } = res.locals.user
 
-  const message = await Message.create({ username, to_username, body});
+  const message = await Message.create({ from_username: username, to_username, body});
   return res.json({ message });
 })
 

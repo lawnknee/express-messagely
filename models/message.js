@@ -22,7 +22,7 @@ class Message {
              VALUES
                ($1, $2, $3, current_timestamp)
              RETURNING id, from_username, to_username, body, sent_at`,
-        [from_username, to_username, body]);
+            [from_username, to_username, body]);
 
     return result.rows[0];
   }
@@ -35,7 +35,7 @@ class Message {
            SET read_at = current_timestamp
              WHERE id = $1
              RETURNING id, read_at`,
-        [id]);
+            [id]);
     const message = result.rows[0];
 
     if (!message) throw new NotFoundError(`No such message: ${id}`);
